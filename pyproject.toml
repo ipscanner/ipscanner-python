@@ -1,0 +1,56 @@
+[project]
+name = "ipscanner-io"
+version = "0.1.0"
+description = "Official Python client for the IPScanner API"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "IPScanner" }]
+requires-python = ">=3.9"
+dependencies = ["httpx>=0.25,<1"]
+keywords = ["ipscanner", "ip", "vpn", "proxy", "geolocation", "asn", "bot detection"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://ipscanner.io"
+Documentation = "https://ipscanner.io/api-documentation"
+Source = "https://github.com/ipscanner/ipscanner-python"
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ipscanner"]
+
+[dependency-groups]
+dev = [
+    "anyio>=3",
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
