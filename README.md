@@ -40,6 +40,11 @@ asyncio.run(main())
 Responses are plain dicts that keep the API's JSON key names. Their shapes are
 described as `TypedDict`s in `ipscanner.types`.
 
+`vpnProvider` is the VPN brand (Mullvad, NordVPN, ...) when known, else `None`;
+`provider` is the network owner. On the Free plan premium fields such as
+`purity`, `provider`, `vpnProvider` and precise geo come back as `None`, listed
+in `locked`, with `planRequired` naming the plan that unlocks them.
+
 Full API reference: https://ipscanner.io/api-documentation
 
 ## Usage
@@ -74,6 +79,7 @@ for event in client.bulk.stream(["1.1.1.1", "8.8.8.8"]):
 `bulk.stream` reads the NDJSON response line by line. Every event has all
 fields, with missing ones set to their zero value. The `done` event also has
 `complete`, which is false when the run hit the quota or the server deadline.
+Fields locked by the plan are zero values too and are listed in `locked`.
 On `AsyncClient` use `async for`.
 
 ### Agentscan
@@ -89,6 +95,27 @@ client.agentscan.verify("66.249.66.1", bot="googlebot")
 client.agentscan.allowlist()
 client.agentscan.self_check()
 ```
+
+### Edge
+
+```python
+client.edge.check("203.0.113.7", site="site_...", user_agent="Mozilla/5.0 ...")
+```
+
+### Sites
+
+```python
+client.sites.policy("site_...")
+```
+
+### Gate
+
+```python
+result = client.gate.verify("gs_...", token, remote_ip="203.0.113.7")
+```
+
+`gate.verify` sends no API key: the site secret is the credential. It is never
+retried.
 
 ### Provenance
 
