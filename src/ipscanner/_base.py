@@ -30,6 +30,7 @@ _STREAM_DEFAULTS: dict[str, Any] = {
     "classification": "",
     "confidence": 0.0,
     "anonymized": False,
+    "vpnProvider": "",
     "score": 0,
     "grade": "",
     "isTorExit": False,
@@ -40,6 +41,7 @@ _STREAM_DEFAULTS: dict[str, Any] = {
     "processed": 0,
     "failed": 0,
     "metered": 0,
+    "planRequired": "",
 }
 
 
@@ -51,6 +53,7 @@ class Request:
     body: Any = None
     raw: bool = False
     timeout: float | None = None
+    auth: bool = True
 
 
 class BaseClient:
@@ -72,7 +75,7 @@ class BaseClient:
             "User-Agent": USER_AGENT,
             "Accept": "text/csv" if req.raw else "application/json",
         }
-        if self.api_key:
+        if self.api_key and req.auth:
             headers["Authorization"] = f"Bearer {self.api_key}"
         kwargs: dict[str, Any] = {
             "method": req.method,
@@ -117,7 +120,8 @@ def parse_stream_line(line: str) -> dict[str, Any] | None:
     line = line.strip()
     if not line:
         return None
-    event = {**_STREAM_DEFAULTS, **json.loads(line)}
+    data = {k: v for k, v in json.loads(line).items() if v is not None}
+    event = {**_STREAM_DEFAULTS, **data}
     if event["type"] == "done":
         event["complete"] = (
             event["reason"] == "complete" and event["processed"] + event["failed"] >= event["total"]

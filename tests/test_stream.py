@@ -72,6 +72,38 @@ def test_stream_requires_input() -> None:
         client.bulk.stream()
 
 
+def test_stream_locked_lines() -> None:
+    lines = [
+        {"type": "meta", "total": 2, "metered": 2, "planRequired": "Starter"},
+        {
+            "type": "result",
+            "ip": "1.1.1.1",
+            "classification": "hosting",
+            "score": None,
+            "grade": None,
+            "verdict": None,
+            "vpnProvider": None,
+            "locked": ["score", "grade", "verdict", "vpnProvider"],
+        },
+        {"type": "result", "index": 1, "ip": "185.65.135.1", "vpnProvider": "Mullvad"},
+        {"type": "done", "reason": "complete", "processed": 2, "total": 2},
+    ]
+    client, _ = make_client(lambda _: ndjson(lines))
+    meta, locked, unlocked, done = list(client.bulk.stream(["1.1.1.1", "185.65.135.1"]))
+    assert meta["planRequired"] == "Starter"
+    assert (locked["score"], locked["grade"], locked["verdict"], locked["vpnProvider"]) == (
+        0,
+        "",
+        "",
+        "",
+    )
+    assert locked["locked"] == ["score", "grade", "verdict", "vpnProvider"]
+    assert unlocked["vpnProvider"] == "Mullvad"
+    assert "locked" not in unlocked
+    assert unlocked["planRequired"] == ""
+    assert done["complete"] is True
+
+
 @pytest.mark.anyio
 async def test_async_stream_events() -> None:
     client, _ = make_async_client(lambda _: ndjson(LINES))

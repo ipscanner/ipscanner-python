@@ -3,37 +3,58 @@
 from typing import Any, Optional, TypedDict
 
 
-class VpnResponse(TypedDict):
+class PremiumMarkers(TypedDict, total=False):
+    """Set when the plan nulled premium fields: their paths and the plan that unlocks them."""
+
+    locked: list[str]
+    planRequired: str
+
+
+class _VpnResponseBase(TypedDict):
     ip: str
     isVpn: bool
     isTor: bool
     networkClass: str
     anonymized: bool
-    provider: str
+    provider: Optional[str]
+    vpnProvider: Optional[str]
     riskScore: int
 
 
-class ProxyResponse(TypedDict):
+class VpnResponse(_VpnResponseBase, PremiumMarkers, total=False):
+    evidence: list[str]
+
+
+class _ProxyResponseBase(TypedDict):
     ip: str
     isProxy: bool
     isTor: bool
     networkClass: str
     anonymized: bool
-    provider: str
+    provider: Optional[str]
+    vpnProvider: Optional[str]
     riskScore: int
 
 
-class GeolocationResponse(TypedDict):
+class ProxyResponse(_ProxyResponseBase, PremiumMarkers, total=False):
+    evidence: list[str]
+
+
+class _GeolocationResponseBase(TypedDict):
     ip: str
     country: str
     countryCode: str
     city: str
     region: str
-    postalCode: str
-    latitude: float
-    longitude: float
+    postalCode: Optional[str]
+    latitude: Optional[float]
+    longitude: Optional[float]
     timezone: str
-    accuracyRadius: int
+    accuracyRadius: Optional[int]
+
+
+class GeolocationResponse(_GeolocationResponseBase, PremiumMarkers, total=False):
+    pass
 
 
 class AsnResponse(TypedDict):
@@ -44,7 +65,7 @@ class AsnResponse(TypedDict):
     country: str
 
 
-class WhoisResponse(TypedDict):
+class _WhoisResponseBase(TypedDict):
     domain: str
     registrar: str
     registeredOn: str
@@ -53,6 +74,10 @@ class WhoisResponse(TypedDict):
     nameservers: list[str]
     status: list[str]
     privacyProtection: bool
+
+
+class WhoisResponse(_WhoisResponseBase, total=False):
+    whoisStatus: str
 
 
 class _LookupTargetBase(TypedDict):
@@ -76,11 +101,15 @@ class ReservedRange(_ReservedRangeBase, total=False):
     detail: str
 
 
-class Verdict(TypedDict):
+class _VerdictBase(TypedDict):
     classification: str
     anonymized: bool
     confidence: float
     method: str
+
+
+class Verdict(_VerdictBase, total=False):
+    evidence: list[str]
 
 
 class Deduction(TypedDict):
@@ -100,21 +129,23 @@ class _LookupResultBase(TypedDict):
     target: LookupTarget
     reserved: ReservedRange
     verdict: Verdict
-    purity: Purity
+    purity: Optional[Purity]
     networkClass: str
     isVpn: bool
     isProxy: bool
     isTor: bool
+    vpnProvider: Optional[str]
     riskScore: int
     at: str
 
 
-class LookupResult(_LookupResultBase, total=False):
-    provider: str
+class LookupResult(_LookupResultBase, PremiumMarkers, total=False):
+    provider: Optional[str]
     networkType: str
     geo: GeolocationResponse
     asn: AsnResponse
     whois: WhoisResponse
+    whoisStatus: str
     degraded: list[str]
 
 
@@ -162,16 +193,17 @@ class MyIPResponse(_MyIPBase, total=False):
 class _BulkResultBase(TypedDict):
     input: str
     ip: str
-    score: int
-    grade: str
-    verdict: str
+    score: Optional[int]
+    grade: Optional[str]
+    verdict: Optional[str]
     classification: str
     confidence: float
     anonymized: bool
+    vpnProvider: Optional[str]
     isTorExit: bool
     inVpnRange: bool
     inDatacenterRange: bool
-    deductions: list[Deduction]
+    deductions: Optional[list[Deduction]]
 
 
 class BulkResult(_BulkResultBase, total=False):
@@ -180,15 +212,20 @@ class BulkResult(_BulkResultBase, total=False):
     asnName: str
     asnType: str
     country: str
+    locked: list[str]
 
 
-class BulkCheckResponse(TypedDict):
+class _BulkCheckResponseBase(TypedDict):
     submitted: int
     unique: int
     duplicates: int
     invalid: list[str]
     summary: dict[str, int]
     results: list[BulkResult]
+
+
+class BulkCheckResponse(_BulkCheckResponseBase, total=False):
+    planRequired: str
 
 
 class _BulkStreamEventBase(TypedDict):
@@ -204,6 +241,7 @@ class _BulkStreamEventBase(TypedDict):
     classification: str
     confidence: float
     anonymized: bool
+    vpnProvider: str
     score: int
     grade: str
     isTorExit: bool
@@ -214,10 +252,12 @@ class _BulkStreamEventBase(TypedDict):
     processed: int
     failed: int
     metered: int
+    planRequired: str
 
 
 class BulkStreamEvent(_BulkStreamEventBase, total=False):
     complete: bool
+    locked: list[str]
 
 
 AgentscanCheckResult = TypedDict(
@@ -327,9 +367,81 @@ _AgentscanSelfResultBase = TypedDict(
 )
 
 
-class AgentscanSelfResult(_AgentscanSelfResultBase, total=False):
+class AgentscanSelfResult(_AgentscanSelfResultBase, PremiumMarkers, total=False):
     asn: AsnResponse
     geo: GeolocationResponse
+
+
+class _EdgeNetworkBase(TypedDict):
+    networkClass: str
+    anonymized: bool
+    riskScore: int
+    vpnProvider: Optional[str]
+
+
+class EdgeNetwork(_EdgeNetworkBase, total=False):
+    provider: Optional[str]
+    evidence: list[str]
+    country: str
+    asn: int
+    asnName: str
+
+
+class EdgeSite(TypedDict):
+    id: str
+    mode: str
+    policyVersion: int
+
+
+_EdgeCheckResultBase = TypedDict(
+    "_EdgeCheckResultBase",
+    {
+        "class": str,
+        "agent": Optional[AgentscanCheckResult],
+        "network": Optional[EdgeNetwork],
+        "site": Optional[EdgeSite],
+    },
+)
+
+
+class EdgeCheckResult(_EdgeCheckResultBase, PremiumMarkers, total=False):
+    degraded: list[str]
+
+
+class SitePolicy(TypedDict):
+    site: str
+    mode: str
+    policy: dict[str, str]
+    version: int
+    updatedAt: str
+
+
+class GateNetwork(TypedDict):
+    classification: str
+    anonymized: bool
+    provider: Optional[str]
+    vpn_provider: Optional[str]
+
+
+_GateVerifyResultBase = TypedDict(
+    "_GateVerifyResultBase",
+    {
+        "success": bool,
+        "class": str,
+        "action": str,
+        "mode": str,
+        "confidence": float,
+        "network": GateNetwork,
+        "signals": list[str],
+        "hostname": str,
+        "issued_at": str,
+        "ip_match": bool,
+    },
+)
+
+
+class GateVerifyResult(_GateVerifyResultBase, PremiumMarkers, total=False):
+    pass
 
 
 class ProvenanceCheckResult(TypedDict):

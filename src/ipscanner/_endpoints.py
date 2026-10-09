@@ -137,6 +137,38 @@ def agentscan_self(
     return Request("POST", "/v1/agentscan/self", body=body)
 
 
+def edge_check(
+    ip: str,
+    site: str | None,
+    user_agent: str | None,
+    ja4: str | None,
+    headers: Mapping[str, str] | None,
+    headless_flags: Mapping[str, bool] | None,
+    request_id: str | None,
+) -> Request:
+    body = _compact(
+        {
+            "site": site,
+            "ip": ip,
+            "user_agent": user_agent,
+            "ja4": ja4,
+            "headers": dict(headers) if headers is not None else None,
+            "headless_flags": dict(headless_flags) if headless_flags is not None else None,
+            "request_id": request_id,
+        }
+    )
+    return Request("POST", "/v1/edge/check", body=body)
+
+
+def sites_policy(site_id: str) -> Request:
+    return Request("GET", f"/v1/sites/{_seg(site_id)}/policy")
+
+
+def gate_verify(secret: str, token: str, remote_ip: str | None) -> Request:
+    body = _compact({"secret": secret, "token": token, "remote_ip": remote_ip})
+    return Request("POST", "/v1/gate/verify", body=body, auth=False)
+
+
 def provenance_check(
     ip: str,
     claimed_jurisdiction: str | None,

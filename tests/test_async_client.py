@@ -62,3 +62,24 @@ async def test_context_manager_closes_owned_client() -> None:
     async with ipscanner.AsyncClient(api_key="k") as client:
         http = client._http
     assert http.is_closed
+
+
+async def test_new_resources() -> None:
+    client, rec = make_async_client(json_response(), api_key="pk_test_abc")
+    await client.edge.check("203.0.113.7", ja4="t13d")
+    assert (rec.last.method, rec.last.url.path) == ("POST", "/v1/edge/check")
+    assert rec.body() == {"ip": "203.0.113.7", "ja4": "t13d"}
+    await client.sites.policy("site_1")
+    assert (rec.last.method, rec.last.url.path) == ("GET", "/v1/sites/site_1/policy")
+    await client.gate.verify("gs_secret", "tok_1", remote_ip="203.0.113.7")
+    assert (rec.last.method, rec.last.url.path) == ("POST", "/v1/gate/verify")
+    assert "authorization" not in rec.last.headers
+    assert rec.body() == {"secret": "gs_secret", "token": "tok_1", "remote_ip": "203.0.113.7"}
+
+
+async def test_gate_verify_invalid_secret() -> None:
+    body = {"success": False, "error": "invalid_secret", "message": "no match"}
+    client, _ = make_async_client(json_response(401, body))
+    with pytest.raises(ipscanner.AuthenticationError) as info:
+        await client.gate.verify("gs_wrong", "tok_1")
+    assert info.value.code == "invalid_secret"

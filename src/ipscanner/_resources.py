@@ -18,6 +18,8 @@ from .types import (
     BulkCheckResponse,
     BulkStreamEvent,
     CrawlerList,
+    EdgeCheckResult,
+    GateVerifyResult,
     GeolocationResponse,
     HistoryPage,
     JurisdictionsResponse,
@@ -29,6 +31,7 @@ from .types import (
     ProvenanceCheckResult,
     ProvenanceVerifyResult,
     ProxyResponse,
+    SitePolicy,
     UsageSummary,
     VpnResponse,
     WhoisResponse,
@@ -248,6 +251,66 @@ class AsyncAgentscan(_AsyncResource):
     ) -> AgentscanSelfResult:
         """Classify the caller's own connection. Not metered."""
         return await self._client._request(ep.agentscan_self(ip, user_agent, headers, ja4))
+
+
+class Edge(_Resource):
+    def check(
+        self,
+        ip: str,
+        *,
+        site: str | None = None,
+        user_agent: str | None = None,
+        ja4: str | None = None,
+        headers: Mapping[str, str] | None = None,
+        headless_flags: Mapping[str, bool] | None = None,
+        request_id: str | None = None,
+    ) -> EdgeCheckResult:
+        """Agentscan verdict and network check for one visitor, with its traffic class."""
+        req = ep.edge_check(ip, site, user_agent, ja4, headers, headless_flags, request_id)
+        return self._client._request(req)
+
+
+class AsyncEdge(_AsyncResource):
+    async def check(
+        self,
+        ip: str,
+        *,
+        site: str | None = None,
+        user_agent: str | None = None,
+        ja4: str | None = None,
+        headers: Mapping[str, str] | None = None,
+        headless_flags: Mapping[str, bool] | None = None,
+        request_id: str | None = None,
+    ) -> EdgeCheckResult:
+        """Agentscan verdict and network check for one visitor, with its traffic class."""
+        req = ep.edge_check(ip, site, user_agent, ja4, headers, headless_flags, request_id)
+        return await self._client._request(req)
+
+
+class Sites(_Resource):
+    def policy(self, site_id: str) -> SitePolicy:
+        """The policy a site enforces. Not metered."""
+        return self._client._request(ep.sites_policy(site_id))
+
+
+class AsyncSites(_AsyncResource):
+    async def policy(self, site_id: str) -> SitePolicy:
+        """The policy a site enforces. Not metered."""
+        return await self._client._request(ep.sites_policy(site_id))
+
+
+class Gate(_Resource):
+    def verify(self, secret: str, token: str, *, remote_ip: str | None = None) -> GateVerifyResult:
+        """Redeem a gate token with the site secret. Sends no API key."""
+        return self._client._request(ep.gate_verify(secret, token, remote_ip))
+
+
+class AsyncGate(_AsyncResource):
+    async def verify(
+        self, secret: str, token: str, *, remote_ip: str | None = None
+    ) -> GateVerifyResult:
+        """Redeem a gate token with the site secret. Sends no API key."""
+        return await self._client._request(ep.gate_verify(secret, token, remote_ip))
 
 
 class Provenance(_Resource):

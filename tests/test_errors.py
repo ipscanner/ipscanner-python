@@ -127,3 +127,28 @@ def test_timeout_error() -> None:
     client, _ = make_client(fail, max_retries=0)
     with pytest.raises(ipscanner.APITimeoutError):
         client.ip.vpn("1.1.1.1")
+
+
+@pytest.mark.parametrize(
+    ("status", "code", "cls"),
+    [
+        (401, "invalid_secret", ipscanner.AuthenticationError),
+        (400, "already_used", ipscanner.APIError),
+        (503, "unavailable", ipscanner.APIError),
+    ],
+)
+def test_gate_verify_errors(status: int, code: str, cls: type[ipscanner.APIError]) -> None:
+    body = {"success": False, "error": code, "message": "nope"}
+    client, rec = make_client(json_response(status, body))
+    with pytest.raises(cls) as info:
+        client.gate.verify("gs_secret", "tok_1")
+    assert (info.value.status, info.value.code, info.value.message) == (status, code, "nope")
+    assert info.value.body == body
+    assert len(rec.requests) == 1
+
+
+def test_sites_policy_unknown_site() -> None:
+    client, _ = make_client(json_response(404, {"error": "unknown_site", "message": "x"}))
+    with pytest.raises(ipscanner.NotFoundError) as info:
+        client.sites.policy("site_x")
+    assert info.value.code == "unknown_site"
