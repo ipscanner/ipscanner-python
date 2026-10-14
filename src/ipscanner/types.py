@@ -10,6 +10,19 @@ class PremiumMarkers(TypedDict, total=False):
     planRequired: str
 
 
+class Deduction(TypedDict):
+    factor: str
+    points: int
+    detail: str
+
+
+class Purity(TypedDict):
+    score: int
+    grade: str
+    verdict: str
+    deductions: list[Deduction]
+
+
 class _VpnResponseBase(TypedDict):
     ip: str
     isVpn: bool
@@ -23,6 +36,8 @@ class _VpnResponseBase(TypedDict):
 
 class VpnResponse(_VpnResponseBase, PremiumMarkers, total=False):
     evidence: list[str]
+    purity: Optional[Purity]
+    deductionCount: int
 
 
 class _ProxyResponseBase(TypedDict):
@@ -38,6 +53,8 @@ class _ProxyResponseBase(TypedDict):
 
 class ProxyResponse(_ProxyResponseBase, PremiumMarkers, total=False):
     evidence: list[str]
+    purity: Optional[Purity]
+    deductionCount: int
 
 
 class _GeolocationResponseBase(TypedDict):
@@ -112,19 +129,6 @@ class Verdict(_VerdictBase, total=False):
     evidence: list[str]
 
 
-class Deduction(TypedDict):
-    factor: str
-    points: int
-    detail: str
-
-
-class Purity(TypedDict):
-    score: int
-    grade: str
-    verdict: str
-    deductions: list[Deduction]
-
-
 class _LookupResultBase(TypedDict):
     target: LookupTarget
     reserved: ReservedRange
@@ -147,6 +151,7 @@ class LookupResult(_LookupResultBase, PremiumMarkers, total=False):
     whois: WhoisResponse
     whoisStatus: str
     degraded: list[str]
+    deductionCount: int
 
 
 class HistoryEvent(TypedDict):
@@ -440,8 +445,34 @@ _GateVerifyResultBase = TypedDict(
 )
 
 
+class GateEmail(TypedDict):
+    status: str
+    reason: Optional[str]
+    suggestion: Optional[str]
+    domain: str
+    action: str
+
+
 class GateVerifyResult(_GateVerifyResultBase, PremiumMarkers, total=False):
-    pass
+    email: GateEmail
+
+
+class EmailChecks(TypedDict):
+    syntax: bool
+    mx: Optional[bool]
+    disposable: bool
+    role: bool
+    freeProvider: bool
+
+
+class EmailCheckResult(TypedDict):
+    email: str
+    status: str
+    reason: Optional[str]
+    suggestion: Optional[str]
+    domain: str
+    checks: EmailChecks
+    mailbox: str
 
 
 class ProvenanceCheckResult(TypedDict):

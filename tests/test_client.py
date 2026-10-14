@@ -14,7 +14,7 @@ def test_auth_header_present() -> None:
     client, rec = make_client(json_response(data={"ip": "1.1.1.1"}), api_key="pk_test_abc")
     client.ip.vpn("1.1.1.1")
     assert rec.last.headers["authorization"] == "Bearer pk_test_abc"
-    assert rec.last.headers["user-agent"] == "ipscanner-python/0.2.0"
+    assert rec.last.headers["user-agent"] == "ipscanner-python/0.3.0"
     assert rec.last.headers["accept"] == "application/json"
 
 

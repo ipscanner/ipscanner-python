@@ -19,6 +19,7 @@ from .types import (
     BulkStreamEvent,
     CrawlerList,
     EdgeCheckResult,
+    EmailCheckResult,
     GateVerifyResult,
     GeolocationResponse,
     HistoryPage,
@@ -300,17 +301,31 @@ class AsyncSites(_AsyncResource):
 
 
 class Gate(_Resource):
-    def verify(self, secret: str, token: str, *, remote_ip: str | None = None) -> GateVerifyResult:
-        """Redeem a gate token with the site secret. Sends no API key."""
-        return self._client._request(ep.gate_verify(secret, token, remote_ip))
+    def verify(
+        self, secret: str, token: str, *, remote_ip: str | None = None, email: str | None = None
+    ) -> GateVerifyResult:
+        """Redeem a gate token with the site secret. Sends no API key. email adds an email check."""
+        return self._client._request(ep.gate_verify(secret, token, remote_ip, email))
 
 
 class AsyncGate(_AsyncResource):
     async def verify(
-        self, secret: str, token: str, *, remote_ip: str | None = None
+        self, secret: str, token: str, *, remote_ip: str | None = None, email: str | None = None
     ) -> GateVerifyResult:
-        """Redeem a gate token with the site secret. Sends no API key."""
-        return await self._client._request(ep.gate_verify(secret, token, remote_ip))
+        """Redeem a gate token with the site secret. Sends no API key. email adds an email check."""
+        return await self._client._request(ep.gate_verify(secret, token, remote_ip, email))
+
+
+class Email(_Resource):
+    def check(self, email: str) -> EmailCheckResult:
+        """Check one address: syntax, throwaway domains, mail servers, typos and role addresses."""
+        return self._client._request(ep.email_check(email))
+
+
+class AsyncEmail(_AsyncResource):
+    async def check(self, email: str) -> EmailCheckResult:
+        """Check one address: syntax, throwaway domains, mail servers, typos and role addresses."""
+        return await self._client._request(ep.email_check(email))
 
 
 class Provenance(_Resource):

@@ -63,6 +63,19 @@ client.ip.demo("1.1.1.1")  # no key needed
 client.ip.myip()  # no key needed
 ```
 
+`vpn` and `proxy` carry `purity` (the score breakdown) on paid plans; a locked answer has
+`deductionCount` instead.
+
+### Email
+
+```python
+result = client.email.check("jane@outlok.com")
+# result["status"] "risky", result["reason"] "typo", result["suggestion"] "jane@outlook.com"
+```
+
+Checks syntax, throwaway domains, whether the domain receives mail, typos of big webmail
+domains and role addresses. The mailbox itself is not probed. One request per address.
+
 ### Bulk
 
 ```python
@@ -111,8 +124,11 @@ client.sites.policy("site_...")
 ### Gate
 
 ```python
-result = client.gate.verify("gs_...", token, remote_ip="203.0.113.7")
+result = client.gate.verify("gs_...", token, remote_ip="203.0.113.7", email=form_email)
 ```
+
+`email` is optional. With it, `result["email"]` holds the check and its action, and
+`result["action"]` is the stricter of the network and email actions.
 
 `gate.verify` sends no API key: the site secret is the credential. It is never
 retried.

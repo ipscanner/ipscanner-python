@@ -164,9 +164,15 @@ def sites_policy(site_id: str) -> Request:
     return Request("GET", f"/v1/sites/{_seg(site_id)}/policy")
 
 
-def gate_verify(secret: str, token: str, remote_ip: str | None) -> Request:
-    body = _compact({"secret": secret, "token": token, "remote_ip": remote_ip})
+def gate_verify(
+    secret: str, token: str, remote_ip: str | None, email: str | None = None
+) -> Request:
+    body = _compact({"secret": secret, "token": token, "remote_ip": remote_ip, "email": email})
     return Request("POST", "/v1/gate/verify", body=body, auth=False)
+
+
+def email_check(email: str) -> Request:
+    return Request("POST", "/v1/email/check", body={"email": email})
 
 
 def provenance_check(
