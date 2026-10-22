@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -106,7 +107,7 @@ class BaseClient:
             return response.text
         try:
             return response.json()
-        except ValueError:
+        except (ValueError, RecursionError):
             raise APIError(
                 response.status_code,
                 "invalid_json",
@@ -116,14 +117,29 @@ class BaseClient:
             ) from None
 
 
-def parse_stream_line(line: str) -> dict[str, Any] | None:
+def parse_stream_line(line: str, status: int) -> dict[str, Any] | None:
     line = line.strip()
     if not line:
         return None
-    data = {k: v for k, v in json.loads(line).items() if v is not None}
-    event = {**_STREAM_DEFAULTS, **data}
+    try:
+        data = json.loads(line)
+    except (ValueError, RecursionError):
+        data = None
+    if not isinstance(data, dict):
+        raise APIError(status, "invalid_json", "Stream line is not a JSON object", body=line)
+    event = {**_STREAM_DEFAULTS, **{k: v for k, v in data.items() if v is not None}}
     if event["type"] == "done":
+        counts = (event["processed"], event["failed"], event["total"])
         event["complete"] = (
-            event["reason"] == "complete" and event["processed"] + event["failed"] >= event["total"]
+            event["reason"] == "complete"
+            and all(isinstance(n, (int, float)) for n in counts)
+            and counts[0] + counts[1] >= counts[2]
         )
     return event
+
+
+def stream_events(lines: Iterable[str], status: int) -> Iterator[dict[str, Any]]:
+    for line in lines:
+        event = parse_stream_line(line, status)
+        if event is not None:
+            yield event

@@ -15,7 +15,7 @@ from ._base import (
     RETRY_STATUSES,
     BaseClient,
     Request,
-    parse_stream_line,
+    stream_events,
 )
 from ._errors import connection_error, error_from_response
 
@@ -68,7 +68,7 @@ class Client(BaseClient):
         while True:
             try:
                 response = self._http.request(**kwargs)
-            except httpx.TransportError as exc:
+            except httpx.RequestError as exc:
                 if self._can_retry(req, attempt):
                     time.sleep(self._backoff(attempt))
                     attempt += 1
@@ -88,11 +88,13 @@ class Client(BaseClient):
                 if response.status_code >= 400:
                     response.read()
                     raise error_from_response(response)
-                for line in response.iter_lines():
-                    event = parse_stream_line(line)
-                    if event is not None:
-                        yield event
-        except httpx.TransportError as exc:
+                # NDJSON lines end at \n only; iter_lines also splits on U+0085 and U+2028
+                pending = ""
+                for text in response.iter_text():
+                    *lines, pending = (pending + text).split("\n")
+                    yield from stream_events(lines, response.status_code)
+                yield from stream_events([pending], response.status_code)
+        except httpx.RequestError as exc:
             raise connection_error(exc) from exc
 
 
@@ -144,7 +146,7 @@ class AsyncClient(BaseClient):
         while True:
             try:
                 response = await self._http.request(**kwargs)
-            except httpx.TransportError as exc:
+            except httpx.RequestError as exc:
                 if self._can_retry(req, attempt):
                     await asyncio.sleep(self._backoff(attempt))
                     attempt += 1
@@ -164,9 +166,12 @@ class AsyncClient(BaseClient):
                 if response.status_code >= 400:
                     await response.aread()
                     raise error_from_response(response)
-                async for line in response.aiter_lines():
-                    event = parse_stream_line(line)
-                    if event is not None:
+                pending = ""
+                async for text in response.aiter_text():
+                    *lines, pending = (pending + text).split("\n")
+                    for event in stream_events(lines, response.status_code):
                         yield event
-        except httpx.TransportError as exc:
+                for event in stream_events([pending], response.status_code):
+                    yield event
+        except httpx.RequestError as exc:
             raise connection_error(exc) from exc

@@ -152,3 +152,31 @@ def test_sites_policy_unknown_site() -> None:
     with pytest.raises(ipscanner.NotFoundError) as info:
         client.sites.policy("site_x")
     assert info.value.code == "unknown_site"
+
+
+def test_rate_limit_infinite_retry_after_falls_back_to_header() -> None:
+    body = b'{"error": "rate_limit_exceeded", "retryAfter": 1e999}'
+    client, _ = make_client(
+        lambda _: httpx.Response(429, content=body, headers={"Retry-After": "7"})
+    )
+    with pytest.raises(ipscanner.RateLimitError) as info:
+        client.ip.vpn("1.1.1.1")
+    assert info.value.retry_after == 7
+
+
+@pytest.mark.parametrize(("status", "code"), [(200, "invalid_json"), (500, "http_500")])
+def test_deeply_nested_body(status: int, code: str) -> None:
+    client, _ = make_client(lambda _: httpx.Response(status, content=b"[" * 100_000))
+    with pytest.raises(ipscanner.APIError) as info:
+        client.ip.lookup("1.1.1.1")
+    assert info.value.code == code
+
+
+def test_corrupt_compressed_body_is_a_connection_error() -> None:
+    def corrupt(_: httpx.Request) -> httpx.Response:
+        headers = {"content-encoding": "gzip"}
+        return httpx.Response(200, stream=httpx.ByteStream(b"not gzip"), headers=headers)
+
+    client, _ = make_client(corrupt)
+    with pytest.raises(ipscanner.APIConnectionError):
+        client.ip.lookup("1.1.1.1")

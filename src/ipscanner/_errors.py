@@ -114,7 +114,7 @@ def _to_int(value: Any) -> int | None:
         return None
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -134,7 +134,7 @@ def error_from_response(response: httpx.Response) -> APIError:
     status = response.status_code
     try:
         body: Any = json.loads(response.content)
-    except ValueError:
+    except (ValueError, RecursionError):
         body = response.text
     if isinstance(body, dict) and isinstance(body.get("error"), str):
         code = body["error"]
@@ -155,7 +155,7 @@ def error_from_response(response: httpx.Response) -> APIError:
     return cls(status, code, message, details, body, response.headers)
 
 
-def connection_error(exc: httpx.TransportError) -> APIConnectionError:
+def connection_error(exc: httpx.RequestError) -> APIConnectionError:
     if isinstance(exc, httpx.TimeoutException):
         return APITimeoutError(str(exc) or "Request timed out")
     return APIConnectionError(str(exc) or "Connection error")

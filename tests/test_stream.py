@@ -104,6 +104,33 @@ def test_stream_locked_lines() -> None:
     assert done["complete"] is True
 
 
+def test_stream_splits_on_newlines_only() -> None:
+    body = '{"type":"result","input":"a\u0085b\u2028c"}\n{"type":"done"}\n'.encode()
+    chunks = [body[:20], body[20:]]
+    client, _ = make_client(lambda _: httpx.Response(200, content=iter(chunks)))
+    events = list(client.bulk.stream(["1.1.1.1"]))
+    assert [e["type"] for e in events] == ["result", "done"]
+    assert events[0]["input"] == "a\u0085b\u2028c"
+
+
+@pytest.mark.parametrize("line", [b"not json", b"[1]", b"null", b"[" * 100_000])
+def test_stream_invalid_line(line: bytes) -> None:
+    body = b'{"type":"meta","total":1}\n' + line + b"\n"
+    client, _ = make_client(lambda _: httpx.Response(200, content=body))
+    events = []
+    with pytest.raises(ipscanner.APIError) as info:
+        for event in client.bulk.stream(["1.1.1.1"]):
+            events.append(event)
+    assert info.value.code == "invalid_json"
+    assert [e["type"] for e in events] == ["meta"]
+
+
+def test_stream_done_with_non_numeric_counts() -> None:
+    lines = [{"type": "done", "reason": "complete", "processed": "2", "total": [3]}]
+    client, _ = make_client(lambda _: ndjson(lines))
+    assert list(client.bulk.stream(["1.1.1.1"]))[-1]["complete"] is False
+
+
 @pytest.mark.anyio
 async def test_async_stream_events() -> None:
     client, _ = make_async_client(lambda _: ndjson(LINES))
