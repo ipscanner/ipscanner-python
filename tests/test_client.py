@@ -39,6 +39,16 @@ def test_ipv6_path_is_escaped() -> None:
     assert rec.last.url.raw_path == b"/v1/geo/2001%3Adb8%3A%3A1"
 
 
+@pytest.mark.parametrize("value", [".", ".."])
+def test_dot_path_segment_is_rejected(value: str) -> None:
+    client, rec = make_client(json_response())
+    with pytest.raises(ValueError):
+        client.ip.vpn(value)
+    with pytest.raises(ValueError):
+        client.sites.policy(value)
+    assert rec.requests == []
+
+
 def test_lookup_body_and_content_type() -> None:
     client, rec = make_client(json_response(data={"networkClass": "hosting"}))
     result = client.ip.lookup("8.8.8.8")

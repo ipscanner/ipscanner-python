@@ -11,7 +11,11 @@ DateLike = Union[str, date]
 
 
 def _seg(value: object) -> str:
-    return quote(str(value), safe="")
+    text = str(value)
+    if text in (".", ".."):
+        # the URL parser would resolve these and send the request to another route
+        raise ValueError(f"invalid path segment: {text!r}")
+    return quote(text, safe="")
 
 
 def _compact(values: Mapping[str, Any]) -> dict[str, Any]:
